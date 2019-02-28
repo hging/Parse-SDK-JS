@@ -579,12 +579,13 @@ class ParseUser extends ParseObject {
 
    * @param {String} username The username (or email) to log in with.
    * @param {String} password The password to log in with.
+   * @param {Object} validation The validation to log in with.
    * @param {Object} options
    * @static
    * @return {Promise} A promise that is fulfilled with the user when
    *     the login completes.
    */
-  static logIn(username, password, options) {
+  static logIn(username, password, validation, options) {
     if (typeof username !== 'string') {
       return Promise.reject(
         new ParseError(
@@ -599,9 +600,16 @@ class ParseUser extends ParseObject {
           'Password must be a string.'
         )
       );
+    } else if (typeof validation !== 'object') {
+      return Promise.reject(
+        new ParseError(
+          ParseError.OTHER_CAUSE,
+          'validation must be a object.'
+          )
+        )
     }
     const user = new ParseUser();
-    user._finishFetch({ username: username, password: password });
+    user._finishFetch({ username: username, password: password, validation: validation });
     return user.logIn(options);
   }
 
@@ -934,7 +942,8 @@ const DefaultController = {
     const stateController = CoreManager.getObjectStateController();
     const auth = {
       username: user.get('username'),
-      password: user.get('password')
+      password: user.get('password'),
+      validation: user.get('validation'),
     };
     return RESTController.request(
       'GET', 'login', auth, options
@@ -946,6 +955,9 @@ const DefaultController = {
       );
       stateController.setPendingOp(
         user._getStateIdentifier(), 'password', undefined
+      );
+      stateController.setPendingOp(
+        user._getStateIdentifier(), 'validation', undefined
       );
       response.password = undefined;
       user._finishFetch(response);
